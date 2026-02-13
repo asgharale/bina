@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>بینا | نتیجه تحلیل تصویر</title>
+    <style>
+        body {
+            font-family: Tahoma, sans-serif;
+            background: linear-gradient(135deg, #eef5ff, #f9fcff);
+            margin: 0;
+            padding: 40px 20px;
+            color: #1f2d3d;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #ffffff;
+            padding: 30px 35px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 90, 180, 0.12);
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #1e6fd9;
+            text-align: center;
+        }
+
+        h2, h3 {
+            color: #174ea6;
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+        }
+
+        .response-box {
+            background: #f4f8ff;
+            padding: 20px;
+            border-radius: 10px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            border: 1px solid #d6e4ff;
+        }
+
+        a.back-link {
+            display: inline-block;
+            margin-top: 25px;
+            color: #1e6fd9;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a.back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>نتیجه تحلیل تصویر</h1>
+
+    {% if image_preview %}
+        <h3>تصویر آپلود شده:</h3>
+        <img src="{{ image_preview.url }}" alt="تصویر آپلود شده">
+    {% endif %}
+
+    <h2 style="margin-top:30px;">پاسخ :</h2>
+    <div class="response-box">
+        {{ response|default:"هنوز تحلیلی انجام نشده است." }}
+    </div>
+
+    <a class="back-link" href="{% url 'detect' %}">
+        ← بازگشت و آپلود تصویر جدید
+    </a>
+</div>
+
+</body>
+</html>

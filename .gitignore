@@ -6,11 +6,6 @@ staticfiles/
 .env
 *.db
 *.sqlite3
-*.css
-*.js
-*.html
-*.map
-*.log
 
 # Virtual environment
 venv/

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>تشخیص اشیا با وب‌کم</title>
+    <style>
+        body { font-family: tahoma, sans-serif; text-align: center; }
+        #video { width: 640px; height: 480px; border: 2px solid #ccc; }
+        #canvas { display: none; }
+        #detections { margin-top: 20px; font-size: 18px; color: #333; }
+    </style>
+    <!-- لود TensorFlow.js و مدل coco-ssd -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest"></script>
+</head>
+<body>
+    <h1>تشخیص اشیا زنده با وب‌کم</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+    <div id="detections">در حال بارگذاری...</div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const detectionsDiv = document.getElementById('detections');
+        const ctx = canvas.getContext('2d');
+        let model;
+
+        // دسترسی به وب‌کم
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                video.play();
+                loadModel();
+            })
+            .catch(err => {
+                detectionsDiv.innerText = 'خطا در دسترسی به وب‌کم: ' + err.message;
+            });
+
+        // لود مدل
+        async function loadModel() {
+            model = await cocoSsd.load();
+            detectionsDiv.innerText = 'مدل بارگذاری شد. تشخیص شروع می‌شود...';
+            setInterval(detectObjects, 500);  // هر ۰.۵ ثانیه تشخیص بده
+        }
+
+        // تشخیص اشیا در فریم
+        async function detectObjects() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const predictions = await model.detect(canvas);
+
+            // نمایش نتایج
+            let results = 'اشیا تشخیص داده شده: ';
+            if (predictions.length === 0) {
+                results += 'هیچ شیایی یافت نشد.';
+            } else {
+                predictions.forEach(pred => {
+                    results += `${pred.class} با احتمال ${Math.round(pred.score * 100)}% - `;
+                });
+            }
+            detectionsDiv.innerText = results;
+
+            // اختیاری: رسم جعبه‌ها روی ویدیو (برای پیشرفته‌تر کردن)
+            drawBoxes(predictions);
+        }
+
+        function drawBoxes(predictions) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            predictions.forEach(pred => {
+                ctx.beginPath();
+                ctx.rect(pred.bbox[0], pred.bbox[1], pred.bbox[2], pred.bbox[3]);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'red';
+                ctx.fillStyle = 'red';
+                ctx.stroke();
+                ctx.fillText(`${pred.class} (${Math.round(pred.score * 100)}%)`, pred.bbox[0], pred.bbox[1] - 5);
+            });
+        }
+    </script>
+</body>
+</html>
