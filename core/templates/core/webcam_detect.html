@@ -1,84 +1,96 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>تشخیص اشیا با وب‌کم</title>
+    <title>شناسایی تصویر</title>
     <style>
-        body { font-family: tahoma, sans-serif; text-align: center; }
+        body { font-family: Arial, sans-serif; text-align: center; }
         #video { width: 640px; height: 480px; border: 2px solid #ccc; }
-        #canvas { display: none; }
-        #detections { margin-top: 20px; font-size: 18px; color: #333; }
+        #result { margin-top: 20px; font-size: 18px; }
+        #btn-snap { margin-top: 20px; padding: 10px 20px; }
     </style>
-    <!-- لود TensorFlow.js و مدل coco-ssd -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@latest"></script>
 </head>
 <body>
-    <h1>تشخیص اشیا زنده با وب‌کم</h1>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas"></canvas>
-    <div id="detections">در حال بارگذاری...</div>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const detectionsDiv = document.getElementById('detections');
-        const ctx = canvas.getContext('2d');
-        let model;
+<h1>پروژه بینا</h1>
 
-        // دسترسی به وب‌کم
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                video.play();
-                loadModel();
-            })
-            .catch(err => {
-                detectionsDiv.innerText = 'خطا در دسترسی به وب‌کم: ' + err.message;
+<video id="video" autoplay playsinline></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<button id="btn-snap">تشخیص</button>
+
+<div id="result">تصویر را انتخاب کنید...</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const resultDiv = document.getElementById('result');
+    const btnSnap = document.getElementById('btn-snap');
+
+    // Your Plant.id API key
+    const API_KEY = "77BmBjfS6D8wP9FouT01vAgax2JsviTiaPf8T0157GslT0Gi77";
+
+    // Start webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(err => {
+            resultDiv.innerText = "Webcam error: " + err.message;
+        });
+
+    btnSnap.addEventListener('click', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        // Convert frame to base64
+        const dataURL = canvas.toDataURL("image/jpeg");
+
+        resultDiv.innerText = "Identifying… please wait";
+
+        // Call API
+        identifyPlant(dataURL);
+    });
+
+    async function identifyPlant(dataURL) {
+        try {
+            const response = await fetch("https://api.plant.id/v2/identify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Api-Key": API_KEY
+                },
+                body: JSON.stringify({
+                    images: [dataURL],
+                    modifiers: ["similar_images"],
+                    plant_details: ["common_names", "url"],
+                })
             });
 
-        // لود مدل
-        async function loadModel() {
-            model = await cocoSsd.load();
-            detectionsDiv.innerText = 'مدل بارگذاری شد. تشخیص شروع می‌شود...';
-            setInterval(detectObjects, 500);  // هر ۰.۵ ثانیه تشخیص بده
+            const data = await response.json();
+            showPlantResult(data);
+
+        } catch (err) {
+            resultDiv.innerText = "Error identifying plant: " + err.message;
+        }
+    }
+
+    function showPlantResult(data) {
+        if (!data.suggestions || data.suggestions.length === 0) {
+            resultDiv.innerText = "No plant found. Try again!";
+            return;
         }
 
-        // تشخیص اشیا در فریم
-        async function detectObjects() {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const top = data.suggestions[0];
+        resultDiv.innerHTML = `
+            <strong>تشخیص:</strong> ${top.plant_name} <br>
+            <strong>نام های متعارف:</strong> ${top.plant_details.common_names.join(", ")} <br>
+            <strong>احتمال:</strong> ${(top.probability * 100).toFixed(2)}%
+        `;
+    }
+</script>
 
-            const predictions = await model.detect(canvas);
-
-            // نمایش نتایج
-            let results = 'اشیا تشخیص داده شده: ';
-            if (predictions.length === 0) {
-                results += 'هیچ شیایی یافت نشد.';
-            } else {
-                predictions.forEach(pred => {
-                    results += `${pred.class} با احتمال ${Math.round(pred.score * 100)}% - `;
-                });
-            }
-            detectionsDiv.innerText = results;
-
-            // اختیاری: رسم جعبه‌ها روی ویدیو (برای پیشرفته‌تر کردن)
-            drawBoxes(predictions);
-        }
-
-        function drawBoxes(predictions) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            predictions.forEach(pred => {
-                ctx.beginPath();
-                ctx.rect(pred.bbox[0], pred.bbox[1], pred.bbox[2], pred.bbox[3]);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = 'red';
-                ctx.fillStyle = 'red';
-                ctx.stroke();
-                ctx.fillText(`${pred.class} (${Math.round(pred.score * 100)}%)`, pred.bbox[0], pred.bbox[1] - 5);
-            });
-        }
-    </script>
 </body>
 </html>
